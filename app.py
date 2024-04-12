@@ -74,7 +74,7 @@ async def people_match(req: fastapi.Request) -> fastapi.Response:
         return proxy_response(apollo_res, content=res_body_raw)
 
     phone_number = next(iter(res_body.person.phone_numbers), None)
-    res_body_pretty = json.dumps(res_body_raw, indent=4)
+    res_body_pretty = json.dumps(res_body_json, indent=4)
     extra = dict(
         phone_number=phone_number.sanitized_number if phone_number else "",
         response=res_body_pretty,

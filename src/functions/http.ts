@@ -1,15 +1,76 @@
-import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+import {
+  app,
+  HttpRequest,
+  HttpResponseInit,
+  InvocationContext,
+} from "@azure/functions";
 
-export async function http(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    context.log(`Http function processed request for url "${request.url}"`);
+async function enrich(body: ArrayBuffer) {
+  const res = await fetch("https://api.apollo.io/v1/people/match", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body,
+  });
+  return res;
+}
 
-    const name = request.query.get('name') || await request.text() || 'world';
+function proxyResponse(
+  res: Response,
+  content: string | ArrayBuffer
+): HttpResponseInit {
+  const headers: Record<string, string> = {};
+  for (const [k, v] of res.headers) {
+    if (k.toLowerCase().startsWith("x-") || k.toLowerCase() == "content-type") {
+      headers[k] = v;
+    }
+  }
+  headers["x-tierpeak-apollo-middleman"] = "1";
+  return {
+    status: res.status,
+    headers,
+    body: content,
+  };
+}
 
-    return { body: `Hello, ${name}!` };
+type EnrichResponse = {
+  person: {
+    phone_numbers?: Array<{ sanitized_number: string }>;
+  };
 };
 
-app.http('http', {
-    methods: ['GET', 'POST'],
-    authLevel: 'anonymous',
-    handler: http
+export async function http(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  context.log(`Http function processed request for url "${request.url}"`);
+
+  const reqBody = await request.arrayBuffer();
+  const res = await enrich(reqBody);
+
+  const resText = await res.text();
+  if (!res.ok) {
+    return proxyResponse(res, resText);
+  }
+
+  try {
+    const resBodyJson = JSON.parse(resText) as EnrichResponse;
+    const resBodyPretty = JSON.stringify(resBodyJson, null, 4);
+    const phoneNumber =
+      resBodyJson.person.phone_numbers?.at(0)?.sanitized_number;
+    const extra = {
+      phoneNumber,
+      response: resBodyPretty,
+    };
+    const resBodyAugmented = JSON.stringify({ ...resBodyJson, extra });
+    return proxyResponse(res, resBodyAugmented);
+  } catch (error) {
+    console.error("Failed to transform response", error);
+    return proxyResponse(res, resText);
+  }
+}
+
+app.http("http", {
+  methods: ["GET", "POST"],
+  authLevel: "anonymous",
+  handler: http,
 });

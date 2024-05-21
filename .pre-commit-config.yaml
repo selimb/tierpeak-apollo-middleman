@@ -14,21 +14,3 @@ repos:
     hooks:
       - id: prettier
         types_or: [yaml]
-
-  - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.12.1
-    hooks:
-      - id: validate-pyproject
-
-  - repo: local
-    hooks:
-      - id: ruff
-        name: ruff
-        entry: ruff check . --fix
-        pass_filenames: false
-        language: system
-      - id: ruff format
-        name: ruff format
-        entry: ruff format .
-        pass_filenames: false
-        language: system

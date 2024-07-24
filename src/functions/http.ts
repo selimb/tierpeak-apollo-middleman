@@ -14,6 +14,10 @@ async function enrich(body: ArrayBuffer) {
   return res;
 }
 
+function normalizePhoneNumber(n: string): string {
+  return n.replace(/^\+1/, "");
+}
+
 function proxyResponse(
   res: Response,
   content: string | ArrayBuffer
@@ -58,7 +62,7 @@ export async function http(
     const phoneNumber =
       resBodyJson.person.phone_numbers?.at(0)?.sanitized_number;
     const extra = {
-      phoneNumber,
+      phoneNumber: phoneNumber && normalizePhoneNumber(phoneNumber),
       response: resBodyPretty,
     };
     const resBodyAugmented = JSON.stringify({ ...resBodyJson, extra });

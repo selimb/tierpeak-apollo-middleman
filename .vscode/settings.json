@@ -1,6 +1,4 @@
 {
-  "ruff.enable": true,
-  "python.analysis.typeCheckingMode": "strict",
   "azureFunctions.deploySubpath": ".",
   "azureFunctions.postDeployTask": "npm install (functions)",
   "azureFunctions.projectLanguage": "TypeScript",
